@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>RSA-OAEP Encryption Benchmark</title>
+</head>
+<body>
+  <h1>RSA-OAEP Encryption Benchmark</h1>
+  <label for="numIps">Number of Random IPs:</label>
+  <input type="number" id="numIps" value="20" min="1">
+  <button id="encryptBtn">Encrypt IPs</button>
+  <p id="result"></p>
+
+  <script>
+    let publicKey;
+
+    // Generate an RSA-OAEP key pair on load
+    async function generateKeyPair() {
+      const keyPair = await window.crypto.subtle.generateKey(
+        {
+          name: "RSA-OAEP",
+          modulusLength: 2048,
+          publicExponent: new Uint8Array([1, 0, 1]),
+          hash: "SHA-256"
+        },
+        true, // extractable keys
+        ["encrypt", "decrypt"]
+      );
+      publicKey = keyPair.publicKey;
+      console.log("Key pair generated.");
+    }
+
+    // Call generateKeyPair when the page loads.
+    generateKeyPair();
+
+    // Function to generate a random IPv4 address.
+    function generateRandomIP() {
+      return [0, 0, 0, 0].map(() => Math.floor(Math.random() * 256)).join('.');
+    }
+
+    // Encrypts a given text using the public key and RSA-OAEP.
+    async function encryptText(text) {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(text);
+      const encrypted = await window.crypto.subtle.encrypt(
+        { name: "RSA-OAEP" },
+        publicKey,
+        data
+      );
+      return encrypted; // Returns an ArrayBuffer.
+    }
+
+    // Benchmark encryption for a specified number of IPs.
+    async function benchmarkEncryption(numIPs) {
+      const ips = [];
+      for (let i = 0; i < numIPs; i++) {
+        ips.push(generateRandomIP());
+      }
+
+      const startTime = performance.now();
+      for (let ip of ips) {
+        await encryptText(ip);
+      }
+      const endTime = performance.now();
+      return endTime - startTime; // Time in milliseconds.
+    }
+
+    // Button click handler.
+    document.getElementById("encryptBtn").addEventListener("click", async () => {
+      const numIPs = parseInt(document.getElementById("numIps").value);
+      document.getElementById("result").innerText = "Encrypting...";
+      const timeTaken = await benchmarkEncryption(numIPs);
+      document.getElementById("result").innerText =
+        `Encrypted ${numIPs} IPs in ${timeTaken.toFixed(2)} ms (avg: ${(timeTaken/numIPs).toFixed(2)} ms per IP)`;
+    });
+  </script>
+</body>
+</html>
